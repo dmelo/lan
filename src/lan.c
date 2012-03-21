@@ -13,7 +13,7 @@
 void end(int code)
 {
     if(1 == code) {
-        printf("Usage: lan object operation [subop] file1 [file2 [file3 ...]]");
+        fprintf(stderr, "Usage: lan object operation [subop] file1 [file2 [file3 ...]]\n\n");
         exit(1);
     }
 
@@ -41,43 +41,138 @@ int _lan_check_lanfs()
     return 0;
 }
 
+void _lan_trim_linebreak(char *line)
+{
+    int end = strlen(line) - 1;
+    if('\n' == line[end])
+        line[end] = '\0';
+}
+
+void _lan_check_files(int argc, char **argv)
+{
+    int i;
+    struct stat buf;
+
+    for(i = 0; i < argc; i++) {
+        if(0 == stat(argv[i], &buf)) {
+            if(S_ISDIR(buf.st_mode)) {
+                fprintf(stderr, "Error: %s is a directory.\n", argv[i]);
+                exit(4);
+            }
+            else {
+                // everything is ok.
+            }
+        }
+        else {
+            fprintf(stderr, "Error: file %s does not exists.\n", argv[i]);
+            exit(3);
+        }
+    }
+
+}
+
+char *_label_get_filename_by_label(char *label)
+{
+    char *filename = (char *) malloc(PATH_MAX * sizeof(char));
+    sprintf(filename, ".lan/labels/%s", label);
+
+    return filename;
+}
+
+
 int _label_get_files_list(char *label, char **files, int *size)
 {
-    char file_name[PATH_MAX];
+    char *filename = _label_get_filename_by_label(label);
     FILE *fd;
     int i = 0;
 
-    sprintf(file_name, ".lan/labels/%s", label);
-    fd = fopen(file_name, "r");
-    if(NULL != fd) {
-        files = (char **) malloc(1024 * 1024 * sizeof(char *));
+    if(NULL != (fd = fopen(filename, "r"))) {
         while(!feof(fd)) {
             files[i] = (char *) malloc(PATH_MAX * sizeof(char));
             fgets(files[i], PATH_MAX, fd);
-            i++;
+            _lan_trim_linebreak(files[i]);
+            if(strlen(files[i]) > 0)
+                i++;
         }
         *size = i;
         fclose(fd);
     }
     else {
-        files = NULL;
         *size = 0;
     }
+
+    free(filename);
 
     return 0;
 }
 
+int _label_get_nonduplicated_lines(char **oldfiles, int oldsize, char **files, int *size)
+{
+    char **newfiles;
+    int i, j, newsize, isRepeated;
+
+    newfiles = (char ** ) malloc(*size * sizeof(char *));
+    memset(newfiles, 0, sizeof(char *) * (*size));
+    newsize = 0;
+
+    // Put all the non-repeated lines on newfiles.
+    for(i = 0; i < *size; i++) {
+        isRepeated = 0;
+        for(j = 0; j < oldsize; j++) {
+            if(strcmp(oldfiles[j], files[i]) == 0) {
+                isRepeated = 1;
+                break;
+            }
+        }
+        if(0 == isRepeated) {
+            newfiles[newsize] = (char *) files[i];
+            newsize++;
+        }
+    }
+
+    // replace files by newfiles.
+    for(i = 0; i < *size; i++)
+        files[i] = newfiles[i];
+    *size = newsize;
+
+    return 0;
+}
+
+
 int label_add(char *label, char **files, int size)
 {
     char **old_files = NULL;
-    int old_size = 0;
+    int old_size = 0, i;
+    char *filename = _label_get_filename_by_label(label);
+    FILE *fd;
 
+    old_files = (char **) malloc(1024 * 1024 * sizeof(char *));
     _label_get_files_list(label, old_files, &old_size);
-    if(0 == size) { // TODO: open file as "w" and write everything from files
-        
+    if(NULL != (fd = fopen(filename, "a"))) {
+        if(0 == size) { // new files
+            if(NULL != (fd = fopen(filename, "w"))) {
+                for(i = 0; i < size; i++)
+                    fprintf(fd, "%s\n", files[i]);
+            }
+        }
+        else {
+            _label_get_nonduplicated_lines(old_files, old_size, files, &size);
+                for(i = 0; i < size; i++)
+                    fprintf(fd, "%s\n", files[i]);
+        }
+        fclose(fd);
     }
     else {
+        fprintf(stderr, "Error: could'n open file %s for writing", filename);
+        exit(2);
     }
+
+
+    // disalocating resources.
+    free(filename);
+    for(i = 0; i < old_size; i++)
+        free(old_files[i]);
+    free(old_files);
 
     return 0;
 }
@@ -90,14 +185,14 @@ int label_info(char *file)
 int main(int argc, char **argv)
 {
     int ret = 0;
-    char **arg_list = NULL;
-    int size = 0;
+
     MINARGS(2);
     if(strcmp("label", argv[1]) == 0) {
         MINARGS(3);
         if(strcmp(argv[2], "add") == 0) {
             MINARGS(5);
-            ret = label_add(argv[3], arg_list, size);
+            _lan_check_files(argc - 4, &(argv[4]));
+            ret = label_add(argv[3], &(argv[4]), argc - 4);
         }
         else if(strcmp(argv[2], "info"))
             ret = label_info(argv[3]);

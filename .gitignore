@@ -2,3 +2,5 @@ lan
 lanfs
 bbfs
 *.o
+.*.swp
+example/*
