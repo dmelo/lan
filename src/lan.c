@@ -139,6 +139,21 @@ int _label_get_nonduplicated_lines(char **oldfiles, int oldsize, char **files, i
     return 0;
 }
 
+int label_list()
+{
+    DIR *dp;
+    struct dirent *ep;
+
+    dp = opendir(".lan/labels");
+    if(NULL != dp) {
+        while(NULL != (ep = readdir(dp)))
+            if(ep->d_type & 0x8)
+                printf("%s\n", ep->d_name);
+        closedir(dp);
+    }
+
+    return 0;
+}
 
 int label_add(char *label, char **files, int size)
 {
@@ -216,8 +231,10 @@ int main(int argc, char **argv)
 
     MINARGS(2);
     if(strcmp("label", argv[1]) == 0) {
-        MINARGS(3);
-        if(strcmp(argv[2], "add") == 0) {
+        if(2 == argc) {
+            label_list();
+        }
+        else if(strcmp(argv[2], "add") == 0) {
             MINARGS(5);
             _lan_check_files(argc - 4, &(argv[4]));
             ret = label_add(argv[3], &(argv[4]), argc - 4);
