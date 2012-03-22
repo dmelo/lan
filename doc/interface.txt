@@ -1,17 +1,17 @@
 lan init
 
-lan label add label-name file1 [file2 [file3 ...]]
-lan label info file
-lan label rm label-name file1 [file2 [file3 ...]]
-lan label list
-lan label search label
+[X] lan label
+[X] lan label add label-name file1 [file2 [file3 ...]]
+[X] lan label info file
+[X] lan label rm label-name file1 [file2 [file3 ...]]
+[ ] lan label search label
 
 
-lan note add 'bla bla bla bla bla' file1 [file2 [file3 ...]]
-lan note info file
-lan note rm note-nro file1 [file2 [fil3 ...]]
+[ ] lan note add 'bla bla bla bla bla' file1 [file2 [file3 ...]]
+[ ] lan note info file
+[ ] lan note rm note-nro file1 [file2 [fil3 ...]]
 
-lan manage rename file1 file2
+[ ] lan manage rename file1 file2
 
 
 

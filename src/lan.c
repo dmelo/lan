@@ -199,13 +199,13 @@ int label_info(char *file)
     struct dirent *ep;
     FILE *fd;
     char filename[PATH_MAX];
-    char fullpath[PATH_MAX];
+    char *fullpath;
 
     dp = opendir(".lan/labels");
     if(NULL != dp) {
         while(NULL != (ep = readdir(dp))) {
             if(ep->d_type & 0x8) {
-                sprintf(fullpath, ".lan/labels/%s", ep->d_name);
+                fullpath = _label_get_filename_by_label(ep->d_name);
                 if(NULL != (fd = fopen(fullpath, "r"))) {
                     while(!feof(fd)) {
                         fgets(filename, PATH_MAX, fd);
@@ -217,9 +217,54 @@ int label_info(char *file)
                     }
                     fclose(fd);
                 }
+                free(fullpath);
             }
         }
         closedir(dp);
+    }
+
+    return 0;
+}
+
+int label_rm(char *label, char **files, int size)
+{
+    FILE *fd; 
+    char *fullpath = _label_get_filename_by_label(label);
+    char **newfiles = malloc(size * sizeof(char *));
+    char *file = malloc(PATH_MAX * sizeof(char));
+    int newsize = 0, i, unique;
+
+    if(NULL != (fd = fopen(fullpath, "r"))) {
+        while(!feof(fd)) {
+            fgets(file, PATH_MAX, fd);
+            _lan_trim_linebreak(file);
+            unique = 1;
+            for(i = 0; i < size; i++) {
+                if(strcmp(file, files[i]) == 0) {
+                    unique = 0;
+                    break;
+                }
+            }
+            if(unique) {
+                newfiles[newsize] = file;
+                newsize++;
+            }
+        }
+
+        fclose(fd);
+        if(NULL != fopen(fullpath, "w")) {
+            for(i = 0; i < newsize; i++)
+                fprintf(fd, "%s\n", newfiles[i]);
+            fclose(fd);
+        }
+        else {
+            fprintf(stderr, "Error: could not open file %s for writing\n", fullpath);
+            exit(2);
+        }
+    }
+    else {
+        fprintf(stderr, "Error: could not open file %s for reading\n", fullpath);
+        exit(1);
     }
 
     return 0;
@@ -241,6 +286,11 @@ int main(int argc, char **argv)
         }
         else if(strcmp(argv[2], "info") == 0)
             ret = label_info(argv[3]);
+        else if(strcmp(argv[2], "rm") == 0) {
+            MINARGS(5);
+            _lan_check_files(argc - 4, &(argv[4]));
+            ret = label_rm(argv[3], &(argv[4]), argc - 4);
+        }
         else
             end(1);
     }
