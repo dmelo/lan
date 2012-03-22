@@ -5,6 +5,7 @@
 #include <limits.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <dirent.h>
 #include "lan.h"
 
 #define STR_SIZE 1024
@@ -179,6 +180,33 @@ int label_add(char *label, char **files, int size)
 
 int label_info(char *file)
 {
+    DIR *dp;
+    struct dirent *ep;
+    FILE *fd;
+    char filename[PATH_MAX];
+    char fullpath[PATH_MAX];
+
+    dp = opendir(".lan/labels");
+    if(NULL != dp) {
+        while(NULL != (ep = readdir(dp))) {
+            if(ep->d_type & 0x8) {
+                sprintf(fullpath, ".lan/labels/%s", ep->d_name);
+                if(NULL != (fd = fopen(fullpath, "r"))) {
+                    while(!feof(fd)) {
+                        fgets(filename, PATH_MAX, fd);
+                        _lan_trim_linebreak(filename);
+                        if(strcmp(filename, file) == 0) {
+                            printf("%s\n", ep->d_name);
+                            break;
+                        }
+                    }
+                    fclose(fd);
+                }
+            }
+        }
+        closedir(dp);
+    }
+
     return 0;
 }
 
@@ -194,7 +222,7 @@ int main(int argc, char **argv)
             _lan_check_files(argc - 4, &(argv[4]));
             ret = label_add(argv[3], &(argv[4]), argc - 4);
         }
-        else if(strcmp(argv[2], "info"))
+        else if(strcmp(argv[2], "info") == 0)
             ret = label_info(argv[3]);
         else
             end(1);
