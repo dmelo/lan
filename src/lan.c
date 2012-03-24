@@ -235,8 +235,8 @@ int label_rm(char *label, char **files, int size)
     int newsize = 0, i, unique;
 
     if(NULL != (fd = fopen(fullpath, "r"))) {
-        while(!feof(fd)) {
-            fgets(file, PATH_MAX, fd);
+        // Reads all the files inside the label
+        while(fgets(file, PATH_MAX, fd)) {
             _lan_trim_linebreak(file);
             unique = 1;
             for(i = 0; i < size; i++) {
@@ -252,6 +252,7 @@ int label_rm(char *label, char **files, int size)
         }
 
         fclose(fd);
+        // Writes only the files not mean for deletion.
         if(NULL != fopen(fullpath, "w")) {
             for(i = 0; i < newsize; i++)
                 fprintf(fd, "%s\n", newfiles[i]);
@@ -266,6 +267,31 @@ int label_rm(char *label, char **files, int size)
         fprintf(stderr, "Error: could not open file %s for reading\n", fullpath);
         exit(1);
     }
+
+    free(fullpath);
+
+    return 0;
+}
+
+int label_search(char *label)
+{
+    char *fullpath = _label_get_filename_by_label(label);
+    char *file = malloc(PATH_MAX * sizeof(char));
+    FILE *fd;
+
+    if(NULL != (fd = fopen(fullpath, "r"))) {
+        while(fgets(file, PATH_MAX, fd)) {
+            _lan_trim_linebreak(file);
+            puts(file);
+        }
+        fclose(fd);
+    }
+    else {
+        fprintf(stderr, "Error: could not open file %s for reading\n", fullpath);
+        exit(1);
+    }
+
+    free(fullpath);
 
     return 0;
 }
@@ -290,6 +316,11 @@ int main(int argc, char **argv)
             MINARGS(5);
             _lan_check_files(argc - 4, &(argv[4]));
             ret = label_rm(argv[3], &(argv[4]), argc - 4);
+        }
+        else if(strcmp(argv[2], "search") == 0) {
+            if(4 != argc)
+                end(1);
+            ret = label_search(argv[3]);
         }
         else
             end(1);
