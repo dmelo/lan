@@ -11,6 +11,7 @@
 #define STR_SIZE 1024
 #define MINARGS(X) if(argc < X) end(1)
 
+// TODO: make this with "..." and pre-define the most common errors.
 void end(int code)
 {
     if(1 == code) {
@@ -20,21 +21,37 @@ void end(int code)
 
 }
 
+/**
+ * TODO: put this one to be called during mount.
+ */
 int lan_init()
 {
     char cwd[PATH_MAX];
+    int i;
 
-    // TODO: check if dirs exists first. if it does, return 1.
+    char** dirs;
+    dirs = (char **) malloc(3 * sizeof(char *));
+    dirs[0] = ".lan";
+    dirs[1] = ".lan/labels";
+    dirs[2] = ".lan/notes";
 
-    mkdir(".lan", 0xffff); // TODO: FIX THIS MASKS
-    mkdir(".lan/labels", 0xffff);
-    mkdir(".lan/notes", 0xffff);
+    for(i = 0; i < 3; i++) {
+        struct stat st;
+        if(stat(dirs[i], &st) == 0) {
+            fprintf(stderr, "Directory %s already exists\n", dirs[i]);
+            exit(1);
+        }
+        mkdir(dirs[i], 0777);
+    }
 
     printf("Initialized empty lan in %s/.lan\n", getcwd(cwd, sizeof(cwd)));
 
     return 0;
 }
 
+/**
+ * Check if filesystem still consistent.
+ */
 int _lan_check_lanfs()
 {
     // TODO: check .lan exists
@@ -42,6 +59,9 @@ int _lan_check_lanfs()
     return 0;
 }
 
+/**
+ * In case a line ends with newline, remove the ending newline.
+ */
 void _lan_trim_linebreak(char *line)
 {
     int end = strlen(line) - 1;
@@ -49,6 +69,9 @@ void _lan_trim_linebreak(char *line)
         line[end] = '\0';
 }
 
+/**
+ * Check if all the files exists and are really files.
+ */
 void _lan_check_files(int argc, char **argv)
 {
     int i;
@@ -72,6 +95,10 @@ void _lan_check_files(int argc, char **argv)
 
 }
 
+/**
+ * Given the label name, returns the full name of the file that represents this
+ * label.
+ */
 char *_label_get_filename_by_label(char *label)
 {
     char *filename = (char *) malloc(PATH_MAX * sizeof(char));
@@ -296,6 +323,14 @@ int label_search(char *label)
     return 0;
 }
 
+/**
+ * Handles the fact that a file have changed it's name on the filesystem.
+ */
+int manage_rename(char *oldfile, char *newfile)
+{
+    return 0;
+}
+
 int main(int argc, char **argv)
 {
     int ret = 0;
@@ -329,7 +364,12 @@ int main(int argc, char **argv)
 
     }
     else if(strcmp("manage", argv[1]) == 0) {
-
+        if(strcmp("rename", argv[2]) == 0) {
+            MINARGS(5);
+            ret = manage_rename(argv[3], argv[4]);
+        }
+        else
+            end(1);
     }
     else if(strcmp("init", argv[1]) == 0) {
         ret = lan_init();

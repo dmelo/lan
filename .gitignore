@@ -4,3 +4,4 @@ bbfs
 *.o
 .*.swp
 example/*
+bin/

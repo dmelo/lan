@@ -4,7 +4,7 @@ lan init
 [X] lan label add label-name file1 [file2 [file3 ...]]
 [X] lan label info file
 [X] lan label rm label-name file1 [file2 [file3 ...]]
-[ ] lan label search label
+[X] lan label search label
 
 
 [ ] lan note add 'bla bla bla bla bla' file1 [file2 [file3 ...]]
