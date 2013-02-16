@@ -18,8 +18,9 @@ void end(int code)
         fprintf(stderr, "Usage: lan object operation [subop] file1 [file2 [file3 ...]]\n\n");
         fprintf(stderr, "\tobject: [label|note]\n");
         fprintf(stderr, "\toperation: [add|info|rm|search]\n\n");
-        fprintf(stderr, "\t\tlabel add label-name file1 [file2 [file3 ...]]\n");
-        fprintf(stderr, "\t\tlabel rm label-name file1 [file2 [file3 ...]]\n");
+        fprintf(stderr, "\t\tlabel add label-name file1 [file2 [file3 ...]] -- Add the label into a list of files\n");
+        fprintf(stderr, "\t\tlabel info file -- List labes on that file\n");
+        fprintf(stderr, "\t\tlabel rm label-name file1 [file2 [file3 ...]] -- Removes the label from a list of files\n");
         exit(1);
     }
 }
