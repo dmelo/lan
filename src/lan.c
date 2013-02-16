@@ -16,9 +16,10 @@ void end(int code)
 {
     if(1 == code) {
         fprintf(stderr, "Usage: lan object operation [subop] file1 [file2 [file3 ...]]\n\n");
+        fprintf(stderr, "\toperation: [label|note]\n");
+        fprintf(stderr, "\tsubop: [add|info|rm|search]\n\n");
         exit(1);
     }
-
 }
 
 /**
@@ -92,7 +93,6 @@ void _lan_check_files(int argc, char **argv)
             exit(3);
         }
     }
-
 }
 
 /**
@@ -107,7 +107,13 @@ char *_label_get_filename_by_label(char *label)
     return filename;
 }
 
-
+/**
+ * Given the label name, list all files with this label.
+ *
+ * @param *label Label name
+ * @param **files output var for the list of files within
+ * @param *size output var with the number of files in **files.
+ */
 int _label_get_files_list(char *label, char **files, int *size)
 {
     char *filename = _label_get_filename_by_label(label);
@@ -139,8 +145,8 @@ int _label_get_nonduplicated_lines(char **oldfiles, int oldsize, char **files, i
     char **newfiles;
     int i, j, newsize, isRepeated;
 
-    newfiles = (char ** ) malloc(*size * sizeof(char *));
-    memset(newfiles, 0, sizeof(char *) * (*size));
+    newfiles = (char ** ) malloc((*size + oldsize) * sizeof(char *));
+    memset(newfiles, 0, sizeof(char *) * (*size + oldsize));
     newsize = 0;
 
     // Put all the non-repeated lines on newfiles.
@@ -191,24 +197,29 @@ int label_add(char *label, char **files, int size)
 
     old_files = (char **) malloc(1024 * 1024 * sizeof(char *));
     _label_get_files_list(label, old_files, &old_size);
-    if(NULL != (fd = fopen(filename, "a"))) {
-        if(0 == size) { // new files
-            if(NULL != (fd = fopen(filename, "w"))) {
-                for(i = 0; i < size; i++)
-                    fprintf(fd, "%s\n", files[i]);
+    if(0 == size) { // new files
+        if(NULL != (fd = fopen(filename, "w"))) {
+            for(i = 0; i < size; i++) {
+                fprintf(fd, "%s\n", files[i]);
             }
+            fclose(fd);
         }
-        else {
-            _label_get_nonduplicated_lines(old_files, old_size, files, &size);
-                for(i = 0; i < size; i++)
-                    fprintf(fd, "%s\n", files[i]);
-        }
-        fclose(fd);
     }
+    else {
+        _label_get_nonduplicated_lines(old_files, old_size, files, &size);
+        if (NULL != (fd = fopen(filename, "a"))) {
+            for(i = 0; i < size; i++) {
+                fprintf(fd, "%s\n", files[i]);
+            }
+            fclose(fd);
+        }
+    }
+    /*
     else {
         fprintf(stderr, "Error: could'n open file %s for writing", filename);
         exit(2);
     }
+    */
 
 
     // disalocating resources.
