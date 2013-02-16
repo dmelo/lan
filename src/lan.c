@@ -16,8 +16,10 @@ void end(int code)
 {
     if(1 == code) {
         fprintf(stderr, "Usage: lan object operation [subop] file1 [file2 [file3 ...]]\n\n");
-        fprintf(stderr, "\toperation: [label|note]\n");
-        fprintf(stderr, "\tsubop: [add|info|rm|search]\n\n");
+        fprintf(stderr, "\tobject: [label|note]\n");
+        fprintf(stderr, "\toperation: [add|info|rm|search]\n\n");
+        fprintf(stderr, "\t\tlabel add label-name file1 [file2 [file3 ...]]\n");
+        fprintf(stderr, "\t\tlabel rm label-name file1 [file2 [file3 ...]]\n");
         exit(1);
     }
 }
@@ -172,6 +174,41 @@ int _label_get_nonduplicated_lines(char **oldfiles, int oldsize, char **files, i
     return 0;
 }
 
+int _label_write_files(char *label, char **files, int size, char *mode)
+{
+    char *fullpath = _label_get_filename_by_label(label), *verbose_mode;
+    FILE *fd;
+    int i;
+
+    if ((fd = fopen(fullpath, mode)) != NULL) {
+        for(i = 0; i < size; i++) {
+            fprintf(fd, "%s\n", files[i]);
+        }
+
+        fclose(fd);
+
+        return 0;
+    }
+    else {
+        verbose_mode = malloc(sizeof(char) * 32);
+        if (strcmp("w", mode) == 0) {
+            sprintf(verbose_mode, "writing");
+        }
+        else if(strcmp("a", mode) == 0) {
+            sprintf(verbose_mode, "append");
+        }
+        else {
+            sprintf(verbose_mode, "???");
+        }
+
+        fprintf(stderr, "Couldn't open file %s for %s", fullpath, verbose_mode);
+
+        return 1;
+    }
+}
+
+
+
 int label_list()
 {
     DIR *dp;
@@ -192,38 +229,18 @@ int label_add(char *label, char **files, int size)
 {
     char **old_files = NULL;
     int old_size = 0, i;
-    char *filename = _label_get_filename_by_label(label);
-    FILE *fd;
 
     old_files = (char **) malloc(1024 * 1024 * sizeof(char *));
     _label_get_files_list(label, old_files, &old_size);
     if(0 == size) { // new files
-        if(NULL != (fd = fopen(filename, "w"))) {
-            for(i = 0; i < size; i++) {
-                fprintf(fd, "%s\n", files[i]);
-            }
-            fclose(fd);
-        }
+        _label_write_files(label, files, size, "w");
     }
     else {
         _label_get_nonduplicated_lines(old_files, old_size, files, &size);
-        if (NULL != (fd = fopen(filename, "a"))) {
-            for(i = 0; i < size; i++) {
-                fprintf(fd, "%s\n", files[i]);
-            }
-            fclose(fd);
-        }
+        _label_write_files(label, files, size, "a");
     }
-    /*
-    else {
-        fprintf(stderr, "Error: could'n open file %s for writing", filename);
-        exit(2);
-    }
-    */
-
 
     // disalocating resources.
-    free(filename);
     for(i = 0; i < old_size; i++)
         free(old_files[i]);
     free(old_files);
@@ -266,49 +283,33 @@ int label_info(char *file)
 
 int label_rm(char *label, char **files, int size)
 {
-    FILE *fd; 
-    char *fullpath = _label_get_filename_by_label(label);
-    char **newfiles = malloc(size * sizeof(char *));
-    char *file = malloc(PATH_MAX * sizeof(char));
-    int newsize = 0, i, unique;
+    char **new_files = NULL, **old_files = NULL;
+    int new_size = 0, i, j, unique, old_size, ret;
 
-    if(NULL != (fd = fopen(fullpath, "r"))) {
-        // Reads all the files inside the label
-        while(fgets(file, PATH_MAX, fd)) {
-            _lan_trim_linebreak(file);
-            unique = 1;
-            for(i = 0; i < size; i++) {
-                if(strcmp(file, files[i]) == 0) {
-                    unique = 0;
-                    break;
-                }
-            }
-            if(unique) {
-                newfiles[newsize] = file;
-                newsize++;
+    _label_get_files_list(label, old_files, &old_size);
+    new_files = malloc(old_size * sizeof(char *));
+    for(i = 0; i < old_size; i++) {
+        unique = 1;
+        for(j = 0; j < size; j++) {
+            if(strcmp(old_files[i], files[j]) == 0) {
+                unique = 0;
             }
         }
 
-        fclose(fd);
-        // Writes only the files not mean for deletion.
-        if(NULL != fopen(fullpath, "w")) {
-            for(i = 0; i < newsize; i++)
-                fprintf(fd, "%s\n", newfiles[i]);
-            fclose(fd);
-        }
-        else {
-            fprintf(stderr, "Error: could not open file %s for writing\n", fullpath);
-            exit(2);
+        if (unique) {
+            new_files[new_size] = old_files[i];
+            new_size++;
         }
     }
-    else {
-        fprintf(stderr, "Error: could not open file %s for reading\n", fullpath);
-        exit(1);
+
+    ret = _label_write_files(label, new_files, new_size, "w");
+
+    for(i = 0; i < new_size; i++) {
+        free(new_files[i]);
     }
+    free(new_files);
 
-    free(fullpath);
-
-    return 0;
+    return ret;
 }
 
 int label_search(char *label)
